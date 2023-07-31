@@ -1,0 +1,36 @@
+name: build all images
+on:
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  list_all:
+    runs-on: ubuntu-latest
+    outputs:
+        IMAGES: ${{ steps.list.outputs.images }}
+
+    steps:
+      - name: fetch repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: get all repo
+        id: list
+        run: |
+          echo "images=`ls -l | grep ^d | awk '{print $NF}' | jq  --raw-input .  | jq -c --slurp . `" >> $GITHUB_OUTPUT
+
+  build:
+    permissions:
+        contents: read
+        packages: write
+        id-token: write
+    needs:
+        - list_all
+    uses: tsic404/docker-images/.github/workflows/image-build.yaml@master
+    strategy:
+      matrix:
+        image: ${{ fromJson(needs.list_all.outputs.IMAGES) }}
+    with:
+        DOCKER_IMAGE: ${{ matrix.image }}
