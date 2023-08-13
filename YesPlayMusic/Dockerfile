@@ -1,7 +1,7 @@
 FROM ubuntu:latest as clone
 WORKDIR /workspace
 RUN apt-get update && \
-    apt-get dist-upgrade && \
+    apt-get dist-upgrade -y && \
     apt-get install -y git && \
     git clone -b master --depth 1 https://github.com/qier222/YesPlayMusic.git
 
