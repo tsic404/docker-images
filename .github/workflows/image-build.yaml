@@ -40,7 +40,8 @@ jobs:
           with:
             string: ${{ inputs.DOCKER_IMAGE }}
         
-        - id: platforms
+        - name: get platforms
+          id: platforms
           run:
             echo platforms=`cat ${{ inputs.DOCKER_IMAGE }}/platforms || echo "linux/amd64,linux/arm64"` >> $GITHUB_OUTPUT
 
