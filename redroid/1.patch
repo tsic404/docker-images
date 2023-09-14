@@ -1,0 +1,13 @@
+diff --git a/redroid.py b/redroid.py
+index 49f5007..c279746 100644
+--- a/redroid.py
++++ b/redroid.py
+@@ -70,7 +70,7 @@ def main():
+     with open("./Dockerfile", "w") as f:
+         f.write(dockerfile)
+     new_image_name = "redroid/redroid:"+"_".join(tags)
+-    subprocess.run([args.container, "build", "-t", new_image_name, "."])
++    # subprocess.run([args.container, "build", "-t", new_image_name, "."])
+     helper.print_color("Successfully built {}".format(
+         new_image_name), helper.bcolors.GREEN)
+ 
