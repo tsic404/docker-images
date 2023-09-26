@@ -1,0 +1,19 @@
+apiVersion: kubescheduler.config.k8s.io/v1beta1
+kind: KubeSchedulerConfiguration
+leaderElection:
+  leaderElect: false
+clientConnection:
+  kubeconfig: /etc/rancher/k3s/k3s.yaml
+profiles:
+- schedulerName: trimaran
+  plugins:
+    score:
+      disabled:
+      - name: NodeResourcesBalancedAllocation
+      - name: NodeResourcesLeastAllocated
+      enabled:
+      - name: TargetLoadPacking
+  pluginConfig:
+    - name: TargetLoadPacking
+      args:
+        watcherAddress: http://127.0.0.1:2020
