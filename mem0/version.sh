@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LAST_VERSION=v1.0.11
+LAST_VERSION=0
 OWNER=mem0ai
 REPO=mem0
 

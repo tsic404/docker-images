@@ -1,10 +1,27 @@
 FROM ubuntu:latest as builder
 WORKDIR /workspace
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y git patch
 RUN git clone --depth=1 https://github.com/mem0ai/mem0.git && \
     cd mem0 && \
     git fetch --tags --force && \
     git checkout $(git tag --sort=-v:refname | head -n 1)
+
+RUN cd mem0 && patch -p1 <<'EOF'
+diff --git a/server/main.py b/server/main.py
+--- a/server/main.py
++++ b/server/main.py
+@@ -73,6 +73,11 @@
+     "history_db_path": HISTORY_DB_PATH,
+ }
+
++import yaml
++CONFIG_PATH = os.environ.get("CONFIG_PATH", None)
++if CONFIG_PATH:
++    with open(CONFIG_PATH, "r") as f:
++        DEFAULT_CONFIG = yaml.safe_load(f)
+
+ MEMORY_INSTANCE = Memory.from_config(DEFAULT_CONFIG)
+EOF
 
 FROM python:3.12
 
@@ -25,6 +42,7 @@ COPY --from=builder /workspace/mem0/poetry.lock .
 COPY --from=builder /workspace/mem0/README.md .
 COPY --from=builder /workspace/mem0/mem0 ./mem0
 RUN pip install -e .[graph]
+RUN pip install cohere
 
 # Return to app directory and copy server code
 WORKDIR /app
