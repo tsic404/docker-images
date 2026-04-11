@@ -1,54 +1,89 @@
 name: image build
 on:
-    workflow_call:
-      inputs:
-        DOCKER_IMAGE:
-          type: string
-          required: true
-    workflow_dispatch:
-      inputs:
-        DOCKER_IMAGE:
-          required: true
+  workflow_call:
+    inputs:
+      DOCKER_IMAGE:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      DOCKER_IMAGE:
+        required: true
 
 jobs:
-    build:
-      runs-on: ubuntu-latest
-      permissions:
-        contents: read
-        packages: write
-        id-token: write
-      steps:
-        - name: init
-          uses: actions/checkout@v3
-          with:
-            fetch-depth: 1
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@v2
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+    - name: init
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
 
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-        - name: Login to Docker Hub
-          uses: docker/login-action@v2
-          with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.GITHUB_TOKEN }}
-        
-        - id: string
-          uses: ASzc/change-string-case-action@v5
-          with:
-            string: ${{ inputs.DOCKER_IMAGE }}
-        
-        - name: get platforms
-          id: platforms
-          run:
-            echo platforms=`cat ${{ inputs.DOCKER_IMAGE }}/platforms || echo "linux/amd64,linux/arm64"` >> $GITHUB_OUTPUT
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-        - name: Publish to Registry
-          uses: docker/build-push-action@v4
-          with:
-            push: true
-            context: ${{ inputs.DOCKER_IMAGE }}
-            tags:  ghcr.io/tsic404/${{ steps.string.outputs.lowercase }}:latest
-            platforms: ${{steps.platforms.outputs.platforms}}
+    - id: string
+      uses: ASzc/change-string-case-action@v5
+      with:
+        string: ${{ inputs.DOCKER_IMAGE }}
+
+    - name: detect version
+      id: version
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        bash "${{ inputs.DOCKER_IMAGE }}/version.sh" >> $GITHUB_OUTPUT
+
+    - name: compare with last version
+      id: check
+      run: |
+        img=${{ inputs.DOCKER_IMAGE }}
+        current_version="${{ steps.version.outputs.current_version }}"
+        last_version="${{ steps.version.outputs.last_version }}"
+
+        if [ -z "$current_version" ] || [ "$current_version" != "$last_version" ]; then
+          echo "should_build=true" >> $GITHUB_OUTPUT
+          echo "New version detected: ${current_version} (was ${last_version})"
+        else
+          echo "should_build=false" >> $GITHUB_OUTPUT
+          echo "Version unchanged: ${current_version}, skipping build"
+        fi
+
+    - name: get platforms
+      id: platforms
+      run: |
+        echo platforms=`cat ${{ inputs.DOCKER_IMAGE }}/platforms || echo "linux/amd64,linux/arm64"` >> $GITHUB_OUTPUT
+
+    - name: Publish to Registry
+      if: steps.check.outputs.should_build == 'true'
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.DOCKER_IMAGE }}
+        platforms: ${{steps.platforms.outputs.platforms}}
+        provenance: false
+        push: true
+        tags: |
+          ghcr.io/tsic404/${{ steps.string.outputs.lowercase }}:latest,ghcr.io/tsic404/${{ steps.string.outputs.lowercase }}:${{ steps.version.outputs.current_version }}
+
+    - name: commit version record
+      if: steps.check.outputs.should_build == 'true'
+      run: |
+        git config user.name 'github-actions[bot]'
+        git config user.email 'github-actions[bot]@users.noreply.github.com'
+        sed -i 's/^LAST_VERSION=0/LAST_VERSION=${{ steps.version.outputs.current_version }}/' "${{ inputs.DOCKER_IMAGE }}/version.sh"
+        git add "${{ inputs.DOCKER_IMAGE }}/version.sh"
+        git commit -m "Update version for ${{ inputs.DOCKER_IMAGE }} to ${{ steps.version.outputs.current_version }}"
+        git pull --rebase && git push
