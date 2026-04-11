@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LAST_VERSION=0
+LAST_VERSION=2026.4.1
 OWNER=home-assistant
 REPO=core
 # 统一 date 命令（Linux: date, macOS: gdate 或 date）
