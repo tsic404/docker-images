@@ -1,12 +1,15 @@
 FROM ubuntu:latest as builder
 WORKDIR /workspace
-RUN apt-get update && apt-get install -y git patch
+RUN apt-get update && apt-get install -y git patch curl
 RUN git clone --depth=1 https://github.com/mem0ai/mem0.git && \
     cd mem0 && \
     git fetch --tags --force && \
     git checkout $(git tag --sort=-v:refname | head -n 1)
 
-RUN cd mem0 && patch -p1 <<'EOF'
+RUN curl https://patch-diff.githubusercontent.com/raw/mem0ai/mem0/pull/4784.patch -o /tmp/4784.patch && \
+    cd mem0 && \
+    patch -p1 < /tmp/4784.patch && \
+    patch -p1 <<'EOF'
 diff --git a/server/main.py b/server/main.py
 --- a/server/main.py
 +++ b/server/main.py
