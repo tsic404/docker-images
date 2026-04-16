@@ -1,10 +1,8 @@
 FROM ubuntu:latest as builder
+ARG VERSION=main
 WORKDIR /workspace
 RUN apt-get update && apt-get install -y git patch curl
-RUN git clone --depth=1 https://github.com/plastic-labs/honcho.git \
-    cd honcho && \
-    git fetch --tags --force && \
-    git checkout $(git tag --sort=-v:refname | head -n 1)
+RUN git clone --branch ${VERSION} --depth=1 https://github.com/plastic-labs/honcho.git
 
 # https://pythonspeed.com/articles/base-image-python-docker-images/
 # https://testdriven.io/blog/docker-best-practices/

@@ -1,10 +1,8 @@
 FROM ubuntu:latest as builder
+ARG VERSION=main
 WORKDIR /workspace
 RUN apt-get update && apt-get install -y git patch curl
-RUN git clone --depth=1 https://github.com/mem0ai/mem0.git && \
-    cd mem0 && \
-    git fetch --tags --force && \
-    git checkout $(git tag --sort=-v:refname | head -n 1)
+RUN git clone --branch ${VERSION} --depth=1 https://github.com/mem0ai/mem0.git
 
 RUN curl https://patch-diff.githubusercontent.com/raw/mem0ai/mem0/pull/4784.patch -o /tmp/4784.patch && \
     cd mem0 && \

@@ -71,6 +71,7 @@ jobs:
       if: steps.check.outputs.should_build == 'true'
       uses: docker/build-push-action@v6
       with:
+        build-args: VERSION=${{ steps.version.outputs.current_version }}
         context: ${{ inputs.DOCKER_IMAGE }}
         platforms: ${{steps.platforms.outputs.platforms}}
         provenance: false

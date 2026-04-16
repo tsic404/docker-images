@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/../.functions/version.sh"
 LAST_VERSION="0"
 OWNER="mem0ai"
 REPO="mem0"
-DAYS_BEFORE=0
+DAYS_BEFORE=3
 
 # mem0特定的tag过滤函数
 # mem0使用v前缀的语义化版本，但可能有不同的规则
