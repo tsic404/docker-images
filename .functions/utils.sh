@@ -29,9 +29,9 @@ log() {
     local message="$3"
     local timestamp
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
+
     if [[ "$level" -ge "$LOG_LEVEL" ]]; then
-        echo -e "${color}[${timestamp}] $message${NC}"
+        printf '%b[%s] %s%b\n' "$color" "$timestamp" "$message" "$NC" >&2
     fi
 }
 
