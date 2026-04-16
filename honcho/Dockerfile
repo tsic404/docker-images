@@ -45,13 +45,13 @@ ENV UV_CACHE_DIR=/tmp/uv-cache
 # Create non-root user and set ownership
 RUN addgroup --system app && adduser --system --group app && mkdir -p /tmp/uv-cache && chown -R app:app /app /tmp/uv-cache
 
-COPY --from=builder --chown=app:app src/ /app/src/
-COPY --from=builder --chown=app:app migrations/ /app/migrations/
-COPY --from=builder --chown=app:app scripts/ /app/scripts/
-COPY --from=builder --chown=app:app docker/ /app/docker/
-COPY --from=builder --chown=app:app alembic.ini /app/alembic.ini
+COPY --from=builder --chown=app:app /workspace/honcho/src/ /app/src/
+COPY --from=builder --chown=app:app /workspace/honcho/migrations/ /app/migrations/
+COPY --from=builder --chown=app:app /workspace/honcho/scripts/ /app/scripts/
+COPY --from=builder --chown=app:app /workspace/honcho/docker/ /app/docker/
+COPY --from=builder --chown=app:app /workspace/honcho/alembic.ini /app/alembic.ini
 # Copy config files - this will copy config.toml if it exists, and config.toml.example
-COPY --from=builder --chown=app:app config.toml* /app/
+COPY --from=builder --chown=app:app /workspace/honcho/config.toml* /app/
 
 # Switch to non-root user
 USER app
