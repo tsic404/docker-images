@@ -83,7 +83,7 @@ jobs:
       run: |
         git config user.name 'github-actions[bot]'
         git config user.email 'github-actions[bot]@users.noreply.github.com'
-        sed -i 's/^LAST_VERSION=0/LAST_VERSION=${{ steps.version.outputs.current_version }}/' "${{ inputs.DOCKER_IMAGE }}/version.sh"
+        sed -i "s|^LAST_VERSION=.*|LAST_VERSION=${{ steps.version.outputs.current_version }}|" "${{ inputs.DOCKER_IMAGE }}/version.sh"
         git add "${{ inputs.DOCKER_IMAGE }}/version.sh"
         git commit -m "Update version for ${{ inputs.DOCKER_IMAGE }} to ${{ steps.version.outputs.current_version }}"
         git pull --rebase && git push
