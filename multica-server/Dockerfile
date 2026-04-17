@@ -9,11 +9,7 @@ RUN git clone --branch ${VERSION} --depth=1 https://github.com/multica-ai/multic
 WORKDIR /src
 
 # Cache dependencies
-COPY server/go.mod server/go.sum ./server/
 RUN cd server && go mod download
-
-# Copy server source
-COPY server/ ./server/
 
 # Build binaries
 RUN cd server && CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/server ./cmd/server
@@ -30,8 +26,8 @@ WORKDIR /app
 COPY --from=builder /src/server/bin/server .
 COPY --from=builder /src/server/bin/multica .
 COPY --from=builder /src/server/bin/migrate .
-COPY server/migrations/ ./migrations/
-COPY docker/entrypoint.sh .
+COPY --from=builder /src/server/migrations/ ./migrations/
+COPY --from=builder /src/docker/entrypoint.sh .
 RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 EXPOSE 8080
