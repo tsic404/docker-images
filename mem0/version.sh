@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # 镜像特定配置
-LAST_VERSION="0"
+LAST_VERSION=v1.0.11
 OWNER="mem0ai"
 REPO="mem0"
 DAYS_BEFORE=3
