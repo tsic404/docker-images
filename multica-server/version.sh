@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/../.functions/version.sh"
 LAST_VERSION=v0.1.32
 OWNER="multica-ai"
 REPO="multica"
-DAYS_BEFORE=3
+DAYS_BEFORE=0
 
 # multica特定的tag过滤函数
 # multica使用v前缀的语义化版本，但可能有不同的规则
