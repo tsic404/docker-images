@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # 镜像特定配置
-LAST_VERSION=2026.4.2
+LAST_VERSION=2026.4.3
 OWNER="home-assistant"
 REPO="core"
 DAYS_BEFORE=3
