@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # 镜像特定配置
-LAST_VERSION=v0.2.6
+LAST_VERSION=v0.2.13
 OWNER="multica-ai"
 REPO="multica"
 DAYS_BEFORE=0
