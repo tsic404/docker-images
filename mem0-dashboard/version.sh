@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # Image specific configuration
-LAST_VERSION=v2.0.0
+LAST_VERSION=v2.0.1
 OWNER="mem0ai"
 REPO="mem0"
 DAYS_BEFORE=3
