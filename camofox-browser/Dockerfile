@@ -2,7 +2,7 @@
 FROM ubuntu:latest AS builder
 
 # Combined version format: {camofox-browser-tag}_{camoufox-tag}
-ARG VERSION=v1.6.0_v135.0.1-beta.24
+ARG VERSION=v1.9.1_v135.0.1-beta.24
 
 WORKDIR /workspace
 
@@ -22,7 +22,7 @@ ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
 # Parse combined version and extract individual versions
-# VERSION format: v1.6.0_v135.0.1-beta.24
+# VERSION format: v1.9.1_v135.0.1-beta.24
 RUN set -eux && \
     CAMOFOX_BROWSER_VERSION="${VERSION%%_*}" && \
     CAMOUFOX_VERSION="${VERSION##*_}" && \
@@ -58,11 +58,26 @@ RUN set -eux && \
     rm /workspace/camoufox/camoufox.zip && \
     test -f /workspace/camoufox/camoufox-bin && echo "Camoufox installed successfully"
 
+# Download yt-dlp binary (architecture-specific)
+# yt-dlp releases: https://github.com/yt-dlp/yt-dlp/releases
+RUN set -eux && \
+    UNAME_ARCH="$(uname -m)" && \
+    case "${UNAME_ARCH}" in \
+        x86_64) YTDLP_BINARY="yt-dlp_linux" ;; \
+        aarch64) YTDLP_BINARY="yt-dlp_linux_aarch64" ;; \
+        armv7l) YTDLP_BINARY="yt-dlp_linux_armv7l" ;; \
+        *) echo "Unsupported architecture for yt-dlp: ${UNAME_ARCH}" && exit 1 ;; \
+    esac && \
+    mkdir -p /workspace/yt-dlp && \
+    curl -fsSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_BINARY}" \
+    -o /workspace/yt-dlp/yt-dlp && \
+    chmod 755 /workspace/yt-dlp/yt-dlp
+
 # Runtime stage
 FROM node:20-slim AS camofox-browser
 
 # Combined version format: {camofox-browser-tag}_{camoufox-tag}
-ARG VERSION=v1.6.0_v135.0.1-beta.24
+ARG VERSION=v1.9.1_v135.0.1-beta.24
 
 # Install dependencies for Camoufox (Firefox-based)
 RUN apt-get update && apt-get install -y \
@@ -96,12 +111,15 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     unzip \
+    # yt-dlp runtime dependency
+    python3-minimal \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy package.json and scripts first for better Docker caching
 COPY --from=builder /workspace/camofox-browser/package.json ./
+COPY --from=builder /workspace/camofox-browser/scripts/ ./scripts/
 RUN npm install --production
 
 # Copy application source
@@ -109,20 +127,33 @@ COPY --from=builder /workspace/camofox-browser/server.js ./
 COPY --from=builder /workspace/camofox-browser/camofox.config.json ./
 COPY --from=builder /workspace/camofox-browser/lib/ ./lib/
 COPY --from=builder /workspace/camofox-browser/plugins/ ./plugins/
-COPY --from=builder /workspace/camofox-browser/scripts/ ./scripts/
+# Copy new files added in v1.9+
+COPY --from=builder /workspace/camofox-browser/plugin.ts ./
+COPY --from=builder /workspace/camofox-browser/plugin.js ./
+COPY --from=builder /workspace/camofox-browser/tsconfig.json ./
+COPY --from=builder /workspace/camofox-browser/openclaw.plugin.json ./
 
 # Install camoufox browser binary
 RUN mkdir -p /root/.cache/camoufox
 COPY --from=builder /workspace/camoufox/ /root/.cache/camoufox/
 
-# Create version.json for camoufox
+# Create version.json for camoufox (matching upstream format)
+# CAMOUFOX_VERSION format: v135.0.1-beta.24
+# Need to extract version=135.0.1, release=beta.24
 RUN set -eux && \
     CAMOUFOX_VERSION="${VERSION##*_}" && \
+    # Remove 'v' prefix: v135.0.1-beta.24 → 135.0.1-beta.24
     CAMOUFOX_VER="${CAMOUFOX_VERSION#v}" && \
-    echo "{\"version\":\"${CAMOUFOX_VER}\",\"release\":\"${CAMOUFOX_VERSION}\"}" > /root/.cache/camoufox/version.json
+    # Split at '-': 135.0.1-beta.24 → version=135.0.1, release=beta.24
+    CAMOUFOX_VERSION_NUM="${CAMOUFOX_VER%%-*}" && \
+    CAMOUFOX_RELEASE="${CAMOUFOX_VER#*-}" && \
+    echo "{\"version\":\"${CAMOUFOX_VERSION_NUM}\",\"release\":\"${CAMOUFOX_RELEASE}\"}" > /root/.cache/camoufox/version.json
 
-COPY --from=builder /workspace/camofox-browser/scripts/install-plugin-deps.sh /tmp/install-plugin-deps.sh
-RUN /tmp/install-plugin-deps.sh && rm /tmp/install-plugin-deps.sh
+# Install yt-dlp binary
+COPY --from=builder /workspace/yt-dlp/yt-dlp /usr/local/bin/yt-dlp
+
+# Run plugin dependency installation script
+RUN scripts/install-plugin-deps.sh
 
 ENV NODE_ENV=production
 ENV CAMOFOX_PORT=9377
