@@ -33,9 +33,7 @@ WORKDIR /app
 COPY --from=deps /app ./
 
 # Copy source
-COPY --from=fetcher /src/package.json .
-COPY --from=fetcher /src/turbo.json .
-COPY --from=fetcher /src/pnpm-workspace.yaml .
+COPY --from=fetcher /src/package.json /src/turbo.json /src/pnpm-workspace.yaml ./
 COPY --from=fetcher /src/apps/web/ apps/web/
 COPY --from=fetcher /src/packages/ packages/
 
@@ -44,11 +42,11 @@ RUN pnpm install --frozen-lockfile --offline
 
 # Set build-time env: tells Next.js rewrites to proxy API calls to the backend service
 ARG REMOTE_API_URL=http://backend:8080
-ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ARG NEXT_PUBLIC_WS_URL
+ARG NEXT_PUBLIC_APP_VERSION=dev
 ENV REMOTE_API_URL=$REMOTE_API_URL
-ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 ENV STANDALONE=true
 
 # Build the web app (standalone output for minimal runtime)
