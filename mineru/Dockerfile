@@ -1,4 +1,4 @@
-ARG VERSION=mineru-3.1.7-released
+ARG VERSION=mineru-3.1.6-released
 
 # =============================================================================
 # Stage 1: Builder/Fetcher — clone source at the exact release tag
