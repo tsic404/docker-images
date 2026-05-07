@@ -46,11 +46,12 @@ RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages &&
     rm -rf /tmp/mineru-src && \
     python3 -m pip cache purge
 
-# ── Pre-download all models to /root/.cache/huggingface ──────────────────
-# Models are baked into the image so the container works out of the box.
-# For K8s deployments, mount a PVC over /root/.cache/huggingface to
-# persist models across Pod restarts.
-RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
+# ── Model download (at container startup) ────────────────────────────────
+# Models are downloaded on first container startup, not pre-baked into image.
+# To persist models across container restarts, mount a volume at:
+#   /root/.cache/huggingface
+# Comment the line below to enable pre-download during image build:
+# RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
 
 # ── Runtime configuration ────────────────────────────────────────────────
 ENV MINERU_MODEL_SOURCE=local
