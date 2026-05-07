@@ -1,15 +1,16 @@
-ARG VERSION=mineru-3.1.6-released
+ARG VERSION=mineru-3.1.7-released
 
 # =============================================================================
-# Stage 1: Fetcher — clone source at the exact release tag
+# Stage 1: Builder/Fetcher — clone source at the exact release tag
 # =============================================================================
-FROM ubuntu:latest AS fetcher
+FROM ubuntu:latest AS builder
 ARG VERSION
-WORKDIR /src
+WORKDIR /workspace
 RUN apt-get update && apt-get install -y git && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN git clone --branch ${VERSION} --depth=1 \
-    https://github.com/opendatalab/MinerU.git /src
+    https://github.com/opendatalab/MinerU.git /workspace/mineru-src
 
 # =============================================================================
 # Stage 2: Runtime — vLLM base + MinerU + models
@@ -40,7 +41,7 @@ RUN apt-get update && \
 # ── Install MinerU from the version-pinned source ────────────────────────
 # Using the cloned source ensures exact parity with the Git tag,
 # including any unreleased patches between PyPI publishes.
-COPY --from=fetcher /src /tmp/mineru-src
+COPY --from=builder /workspace/mineru-src /tmp/mineru-src
 RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages && \
     rm -rf /tmp/mineru-src && \
     python3 -m pip cache purge
@@ -49,7 +50,7 @@ RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages &&
 # Models are baked into the image so the container works out of the box.
 # For K8s deployments, mount a PVC over /root/.cache/huggingface to
 # persist models across Pod restarts.
-# RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
+RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
 
 # ── Runtime configuration ────────────────────────────────────────────────
 ENV MINERU_MODEL_SOURCE=local
