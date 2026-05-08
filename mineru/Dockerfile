@@ -1,4 +1,4 @@
-ARG VERSION=mineru-3.1.6-released
+ARG VERSION=mineru-3.1.7-released
 
 # =============================================================================
 # Stage 1: Builder/Fetcher — clone source at the exact release tag
@@ -41,6 +41,8 @@ RUN apt-get update && \
 # ── Install MinerU from the version-pinned source ────────────────────────
 # Using the cloned source ensures exact parity with the Git tag,
 # including any unreleased patches between PyPI publishes.
+# Upstream uses: RUN python3 -m pip install -U 'mineru[core]>=3.0.0'
+# We maintain git clone for version-pinned builds.
 COPY --from=builder /workspace/mineru-src /tmp/mineru-src
 RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages && \
     rm -rf /tmp/mineru-src && \
@@ -50,7 +52,8 @@ RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages &&
 # Models are downloaded on first container startup, not pre-baked into image.
 # To persist models across container restarts, mount a volume at:
 #   /root/.cache/huggingface
-# Comment the line below to enable pre-download during image build:
+# Upstream pre-downloads models: RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
+# Uncomment below to pre-download during image build (increases image size):
 # RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
 
 # ── Runtime configuration ────────────────────────────────────────────────
