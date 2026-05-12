@@ -74,7 +74,7 @@ RUN set -eux && \
     chmod 755 /workspace/yt-dlp/yt-dlp
 
 # Runtime stage
-FROM node:20-slim AS camofox-browser
+FROM node:22-slim AS camofox-browser
 
 # Combined version format: {camofox-browser-tag}_{camoufox-tag}
 ARG VERSION=v1.9.1_v135.0.1-beta.24
