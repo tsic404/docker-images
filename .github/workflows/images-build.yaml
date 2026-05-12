@@ -29,6 +29,7 @@ jobs:
     - list_all
     uses: tsic404/docker-images/.github/workflows/image-build.yaml@master
     strategy:
+      fail-fast: false
       matrix:
         image: ${{ fromJson(needs.list_all.outputs.IMAGES) }}
     with:
