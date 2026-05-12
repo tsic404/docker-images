@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y git patch curl
 RUN git clone --branch ${VERSION} --depth=1 https://github.com/mem0ai/mem0.git
 
 # Base stage (from upstream)
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
