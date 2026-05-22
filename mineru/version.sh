@@ -11,7 +11,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # Image specific configuration
-LAST_VERSION=mineru-3.1.14-released
+LAST_VERSION=mineru-3.1.15-released
 OWNER="opendatalab"
 REPO="MinerU"
 DAYS_BEFORE=0
