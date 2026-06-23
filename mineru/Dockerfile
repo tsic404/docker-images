@@ -1,4 +1,4 @@
-ARG VERSION=mineru-3.1.7-released
+ARG VERSION=mineru-3.4.0-released
 
 # =============================================================================
 # Stage 1: Builder/Fetcher — clone source at the exact release tag
@@ -16,12 +16,13 @@ RUN git clone --branch ${VERSION} --depth=1 \
 # Stage 2: Runtime — vLLM base + MinerU + models
 # =============================================================================
 # vLLM base image provides:
-#   - CUDA toolkit (12.x)
+#   - CUDA toolkit (13.0)
 #   - PyTorch with GPU support
 #   - vLLM inference engine
 #   - Supported GPU architectures: Volta / Turing / Ampere / Ada Lovelace / Hopper / Blackwell
-#     (Compute Capability 7.0 – 12.0)
-FROM vllm/vllm-openai:v0.11.2
+#     (Compute Capability 7.0 – 12.1)
+# For CUDA 12.9 environments, use: vllm/vllm-openai:v0.21.0-cu129
+FROM vllm/vllm-openai:v0.21.0
 
 ARG VERSION
 
@@ -41,7 +42,7 @@ RUN apt-get update && \
 # ── Install MinerU from the version-pinned source ────────────────────────
 # Using the cloned source ensures exact parity with the Git tag,
 # including any unreleased patches between PyPI publishes.
-# Upstream uses: RUN python3 -m pip install -U 'mineru[core]>=3.0.0'
+# Upstream uses: RUN python3 -m pip install -U 'mineru[core]>=3.4.0'
 # We maintain git clone for version-pinned builds.
 COPY --from=builder /workspace/mineru-src /tmp/mineru-src
 RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages && \
