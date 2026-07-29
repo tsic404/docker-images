@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
-LAST_VERSION=
+LAST_VERSION=v1.1.0
 OWNER="hsliuping"
 REPO="TradingAgents-CN"
 DAYS_BEFORE=3
