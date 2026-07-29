@@ -123,6 +123,29 @@ get_latest_tag() {
     echo "$tags_json" | jq -r '.[0].name // empty'
 }
 
+# 查询GitHub仓库的branches（返回名称列表）
+# 参数: owner repo
+# 返回: 分支名称列表（每行一个）
+query_github_branches() {
+    local owner="$1"
+    local repo="$2"
+
+    local url="https://api.github.com/repos/${owner}/${repo}/branches?per_page=100"
+    local curl_cmd="curl -s"
+
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        curl_cmd="curl -s -H \"Authorization: Bearer ${GITHUB_TOKEN}\""
+    fi
+
+    local response
+    response=$(eval "$curl_cmd" "$url") || {
+        log_error "GitHub API请求失败"
+        return 1
+    }
+
+    echo "$response" | jq -r '.[].name'
+}
+
 # 如果直接执行，显示用法
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "GitHub工具函数库"
@@ -132,6 +155,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo ""
     echo "可用函数:"
     echo "  - query_github_tags <owner> <repo>"
+    echo "  - query_github_branches <owner> <repo>"
     echo "  - iso_to_timestamp <iso_date>"
     echo "  - days_ago_timestamp <days>"
     echo "  - filter_tags_before_date <tags_json> <cutoff_timestamp>"
