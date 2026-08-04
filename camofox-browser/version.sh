@@ -11,7 +11,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # Image specific configuration
-LAST_VERSION=v1.13.0_v152.0.4-beta.28
+LAST_VERSION=v1.13.1_v152.0.4-beta.28
 
 # camofox-browser project
 CAMOFOX_BROWSER_OWNER="jo-inc"
