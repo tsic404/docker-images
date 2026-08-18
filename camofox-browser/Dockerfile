@@ -117,10 +117,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy package.json and scripts first for better Docker caching
+# Copy package.json, lockfile, and scripts first for better Docker caching
 COPY --from=builder /workspace/camofox-browser/package.json ./
+COPY --from=builder /workspace/camofox-browser/package-lock.json ./
 COPY --from=builder /workspace/camofox-browser/scripts/ ./scripts/
-RUN npm install --production
+RUN npm ci --omit=dev
 
 # Copy application source
 COPY --from=builder /workspace/camofox-browser/server.js ./
