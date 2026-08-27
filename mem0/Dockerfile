@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY --from=fetcher /workspace/mem0/server/requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt "psycopg[binary]>=3.2.8"
 
 COPY --from=fetcher /workspace/mem0/server/ .
 
@@ -18,4 +18,4 @@ EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
