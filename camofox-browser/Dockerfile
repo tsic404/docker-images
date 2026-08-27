@@ -121,7 +121,15 @@ WORKDIR /app
 COPY --from=builder /workspace/camofox-browser/package.json ./
 COPY --from=builder /workspace/camofox-browser/package-lock.json ./
 COPY --from=builder /workspace/camofox-browser/scripts/ ./scripts/
-RUN npm ci --omit=dev
+# better-sqlite3 has no prebuild for this node:22-slim combination, so npm ci
+# falls back to node-gyp rebuild, which fails with "not found: make". Install a
+# toolchain for the build and purge it in the same layer so it does not land in
+# the image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential python3 \
+    && npm ci --omit=dev \
+    && apt-get purge -y --auto-remove build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy application source
 COPY --from=builder /workspace/camofox-browser/server.js ./

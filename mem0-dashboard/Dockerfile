@@ -15,6 +15,9 @@ FROM base AS deps
 COPY --from=fetcher /workspace/mem0/server/dashboard/package.json ./
 COPY --from=fetcher /workspace/mem0/server/dashboard/pnpm-lock.yaml ./
 # Install dependencies with pnpm (simplified - upstream has adaptive logic but only pnpm-lock.yaml exists)
+# pnpm-workspace.yaml carries the overrides recorded in the lockfile; without it
+# --frozen-lockfile fails with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH.
+COPY --from=fetcher /workspace/mem0/server/dashboard/pnpm-workspace.yaml ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts=false
 
 # Builder stage (adapted from upstream builder stage)
