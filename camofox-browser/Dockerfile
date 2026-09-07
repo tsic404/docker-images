@@ -74,7 +74,7 @@ RUN set -eux && \
     chmod 755 /workspace/yt-dlp/yt-dlp
 
 # Runtime stage
-FROM node:22-slim AS camofox-browser
+FROM node:22-trixie-slim AS camofox-browser
 
 # Combined version format: {camofox-browser-tag}_{camoufox-tag}
 ARG VERSION=v1.9.1_v135.0.1-beta.24
@@ -98,7 +98,7 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     # Mesa OpenGL/EGL for WebGL support (software rendering via llvmpipe)
     # Without these, Firefox cannot create WebGL contexts — a major bot detection signal
-    libegl1-mesa \
+    libegl1 \
     libgl1-mesa-dri \
     libgbm1 \
     # Xvfb virtual display — runs Camoufox as if on a real desktop (better anti-detection)
@@ -121,7 +121,7 @@ WORKDIR /app
 COPY --from=builder /workspace/camofox-browser/package.json ./
 COPY --from=builder /workspace/camofox-browser/package-lock.json ./
 COPY --from=builder /workspace/camofox-browser/scripts/ ./scripts/
-# better-sqlite3 has no prebuild for this node:22-slim combination, so npm ci
+# better-sqlite3 has no prebuild for this node:22-trixie-slim combination, so npm ci
 # falls back to node-gyp rebuild, which fails with "not found: make". Install a
 # toolchain for the build and purge it in the same layer so it does not land in
 # the image.
@@ -134,7 +134,12 @@ RUN apt-get update \
 # Copy application source
 COPY --from=builder /workspace/camofox-browser/server.js ./
 COPY --from=builder /workspace/camofox-browser/camofox.config.json ./
-COPY --from=builder /workspace/camofox-browser/lib/ ./lib/
+# lib/cookies.js is a compatibility re-export from ../mcp/lib/cookies.mjs, so mcp/
+# must ship even though the MCP server itself is not run here. Without it the
+# persistence plugin dies at load with ERR_MODULE_NOT_FOUND, the server starts
+# anyway, /health keeps reporting ok, and no profile is ever written — i.e. the
+# container silently loses the durable-profile feature it exists to provide.
+COPY --from=builder /workspace/camofox-browser/mcp/ ./mcp/
 COPY --from=builder /workspace/camofox-browser/plugins/ ./plugins/
 # Copy new files added in v1.9+
 COPY --from=builder /workspace/camofox-browser/plugin.ts ./
