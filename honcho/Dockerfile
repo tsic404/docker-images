@@ -23,11 +23,21 @@ ENV UV_LINK_MODE=copy
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Optionally include lancedb with:
+#   docker build --build-arg INSTALL_LANCEDB=true .
+ARG INSTALL_LANCEDB=false
 # Install the project's dependencies using the lockfile and settings
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,from=builder,source=/workspace/honcho/uv.lock,target=uv.lock \
     --mount=type=bind,from=builder,source=/workspace/honcho/pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-group dev
+    if [ "$INSTALL_LANCEDB" = "true" ]; then \
+        uv sync --frozen --no-install-project --no-group dev --extra lancedb; \
+    elif [ "$INSTALL_LANCEDB" = "false" ]; then \
+        uv sync --frozen --no-install-project --no-group dev; \
+    else \
+        echo "INSTALL_LANCEDB must be 'true' or 'false'" >&2; \
+        exit 2; \
+    fi
 
 # Copy only requirements to cache them in docker layer
 COPY --from=builder /workspace/honcho/uv.lock /app/uv.lock
@@ -43,7 +53,15 @@ ENV HOME=/app
 ENV UV_CACHE_DIR=/tmp/uv-cache
 
 # Create non-root user and set ownership
-RUN addgroup --system app && adduser --system --group app && mkdir -p /tmp/uv-cache && chown -R app:app /app /tmp/uv-cache
+RUN addgroup --system app \
+    && adduser --system --group app \
+    && chown app:app /app \
+    # Pre-create the LanceDB dir so a named volume mounted here inherits app
+    # ownership instead of defaulting to root.
+    && mkdir /app/lancedb_data \
+    && chown app:app /app/lancedb_data \
+    && mkdir -p /tmp/uv-cache \
+    && chown -R app:app /app /tmp/uv-cache
 
 COPY --from=builder --chown=app:app /workspace/honcho/src/ /app/src/
 COPY --from=builder --chown=app:app /workspace/honcho/migrations/ /app/migrations/
@@ -52,6 +70,9 @@ COPY --from=builder --chown=app:app /workspace/honcho/docker/ /app/docker/
 COPY --from=builder --chown=app:app /workspace/honcho/alembic.ini /app/alembic.ini
 # Copy config files - this will copy config.toml if it exists, and config.toml.example
 COPY --from=builder --chown=app:app /workspace/honcho/config.toml* /app/
+# src/_version.py reads the service version from this file at runtime, so it
+# is a runtime input as well as a build input.
+COPY --from=builder --chown=app:app /workspace/honcho/pyproject.toml /app/pyproject.toml
 
 # Switch to non-root user
 USER app
