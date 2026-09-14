@@ -58,26 +58,19 @@ RUN set -eux && \
     rm /workspace/camoufox/camoufox.zip && \
     test -f /workspace/camoufox/camoufox-bin && echo "Camoufox installed successfully"
 
-# Download yt-dlp binary (architecture-specific)
-# yt-dlp releases: https://github.com/yt-dlp/yt-dlp/releases
-RUN set -eux && \
-    UNAME_ARCH="$(uname -m)" && \
-    case "${UNAME_ARCH}" in \
-        x86_64) YTDLP_BINARY="yt-dlp_linux" ;; \
-        aarch64) YTDLP_BINARY="yt-dlp_linux_aarch64" ;; \
-        armv7l) YTDLP_BINARY="yt-dlp_linux_armv7l" ;; \
-        *) echo "Unsupported architecture for yt-dlp: ${UNAME_ARCH}" && exit 1 ;; \
-    esac && \
-    mkdir -p /workspace/yt-dlp && \
-    curl -fsSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${YTDLP_BINARY}" \
-    -o /workspace/yt-dlp/yt-dlp && \
-    chmod 755 /workspace/yt-dlp/yt-dlp
+# yt-dlp is installed and verified by the enabled youtube plugin hook below
+# (plugins/youtube/post-install.sh, pinned version + sha256), matching upstream.
 
 # Runtime stage
 FROM node:22-trixie-slim AS camofox-browser
 
 # Combined version format: {camofox-browser-tag}_{camoufox-tag}
 ARG VERSION=v1.9.1_v135.0.1-beta.24
+
+# Pinned yt-dlp version + SHA256 (mirrors upstream v1.15.0)
+# Consumed by plugins/youtube/post-install.sh via install-plugin-deps.sh below
+ARG YT_DLP_VERSION=2026.08.19
+ARG YT_DLP_SHA256=1fa6733c37ea6fb51c99ad8fe785e7b7e5f3246c9b980230329d4fb72ed8d4d6
 
 # Install dependencies for Camoufox (Firefox-based)
 RUN apt-get update && apt-get install -y \
@@ -134,13 +127,22 @@ RUN apt-get update \
 # Copy application source
 COPY --from=builder /workspace/camofox-browser/server.js ./
 COPY --from=builder /workspace/camofox-browser/camofox.config.json ./
-# lib/cookies.js is a compatibility re-export from ../mcp/lib/cookies.mjs, so mcp/
-# must ship even though the MCP server itself is not run here. Without it the
-# persistence plugin dies at load with ERR_MODULE_NOT_FOUND, the server starts
-# anyway, /health keeps reporting ok, and no profile is ever written — i.e. the
+# lib/ and mcp/ must BOTH ship: plugins/persistence/index.js imports
+# ../../lib/persistence.js and ../../lib/cookies.js; vnc imports lib/auth.js and
+# lib/tmp-cleanup.js; youtube imports lib/request-utils.js. lib/cookies.js is a
+# compatibility re-export from ../mcp/lib/cookies.mjs, so mcp/ must ship even
+# though the MCP server itself is not run here. Without either, the persistence
+# plugin dies at load with ERR_MODULE_NOT_FOUND, the server starts anyway,
+# /health keeps reporting ok, and no profile is ever written — i.e. the
 # container silently loses the durable-profile feature it exists to provide.
+COPY --from=builder /workspace/camofox-browser/lib/ ./lib/
 COPY --from=builder /workspace/camofox-browser/mcp/ ./mcp/
 COPY --from=builder /workspace/camofox-browser/plugins/ ./plugins/
+# v1.14.0 source's plugins/youtube/post-install.sh still downloads "latest"
+# yt-dlp without verification; override with the v1.15.0 pinned + sha256-verified
+# version (remove this COPY once LAST_VERSION reaches v1.15.0, the source then
+# carries the pinned script itself).
+COPY plugins/youtube/post-install.sh /app/plugins/youtube/post-install.sh
 # Copy new files added in v1.9+
 COPY --from=builder /workspace/camofox-browser/plugin.ts ./
 COPY --from=builder /workspace/camofox-browser/plugin.js ./
@@ -163,11 +165,10 @@ RUN set -eux && \
     CAMOUFOX_RELEASE="${CAMOUFOX_VER#*-}" && \
     echo "{\"version\":\"${CAMOUFOX_VERSION_NUM}\",\"release\":\"${CAMOUFOX_RELEASE}\"}" > /root/.cache/camoufox/version.json
 
-# Install yt-dlp binary
-COPY --from=builder /workspace/yt-dlp/yt-dlp /usr/local/bin/yt-dlp
-
 # Run plugin dependency installation script
-RUN scripts/install-plugin-deps.sh
+# youtube's post-install.sh installs and sha256-verifies the pinned yt-dlp
+# (YT_DLP_VERSION / YT_DLP_SHA256 injected from the ARGs above)
+RUN YT_DLP_VERSION=${YT_DLP_VERSION} YT_DLP_SHA256=${YT_DLP_SHA256} scripts/install-plugin-deps.sh
 
 ENV NODE_ENV=production
 ENV CAMOFOX_PORT=9377
