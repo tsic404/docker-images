@@ -10,7 +10,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # 镜像特定配置
-LAST_VERSION=v3.1.2
+LAST_VERSION=v3.2.0
 OWNER="plastic-labs"
 REPO="honcho"
 DAYS_BEFORE=0
