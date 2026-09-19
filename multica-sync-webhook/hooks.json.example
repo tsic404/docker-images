@@ -1,0 +1,25 @@
+[
+  {
+    "id": "multica-agent-sync",
+    "execute-command": "/etc/webhook/sync.py",
+    "pass-arguments-to-command": [
+      {
+        "source": "entire-payload"
+      }
+    ],
+    "trigger-rule": {
+      "and": [
+        {
+          "match": {
+            "type": "payload-hash-sha1",
+            "secret": "REPLACE_WITH_GITEA_WEBHOOK_SECRET",
+            "parameter": {
+              "source": "header",
+              "name": "X-Gitea-Signature"
+            }
+          }
+        }
+      ]
+    }
+  }
+]
