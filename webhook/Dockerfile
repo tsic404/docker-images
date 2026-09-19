@@ -30,6 +30,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl jq ca-cert
 
 COPY --from=fetcher /workspace/webhook /usr/local/bin/webhook
 
+# 非 root 运行：创建 uid 1000 webhook 用户（参考 almir/docker-webhook）
+RUN groupadd --gid 1000 webhook \
+    && useradd --uid 1000 --gid webhook --shell /usr/sbin/nologin -d /etc/webhook --create-home webhook
+
 # hooks.json 与同步脚本不封装进镜像，运行时通过 volume 挂载（-v <dir>:/etc/webhook）
+WORKDIR /etc/webhook
+
+USER webhook
+
 EXPOSE 9000
 CMD ["/usr/local/bin/webhook", "-verbose", "-hooks=/etc/webhook/hooks.json", "-hotreload"]
