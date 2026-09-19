@@ -1,5 +1,5 @@
 #!/bin/bash
-# multica-sync-webhook/version.sh
+# webhook/version.sh
 
 set -euo pipefail
 
