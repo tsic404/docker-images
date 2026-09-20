@@ -176,3 +176,15 @@ ENV CAMOFOX_PORT=9377
 EXPOSE 9377
 
 CMD ["sh", "-c", "node --max-old-space-size=${MAX_OLD_SPACE_SIZE:-128} server.js"]
+
+# Optional: rebuild plugin deps after adding third-party plugins
+# Usage: docker build --target with-plugins -t camofox-browser .
+FROM camofox-browser AS with-plugins
+COPY --from=builder /workspace/camofox-browser/plugins/ ./plugins/
+# Re-apply the pinned youtube post-install.sh override: the builder plugins/
+# copy above restores the v1.14.0 unpinned script (remove once LAST_VERSION
+# reaches v1.15.0, same rule as the camofox-browser stage).
+COPY plugins/youtube/post-install.sh /app/plugins/youtube/post-install.sh
+COPY --from=builder /workspace/camofox-browser/camofox.config.json ./
+COPY --from=builder /workspace/camofox-browser/scripts/install-plugin-deps.sh /tmp/install-plugin-deps.sh
+RUN /tmp/install-plugin-deps.sh && rm /tmp/install-plugin-deps.sh
