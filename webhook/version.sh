@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 source "${SCRIPT_DIR}/../.functions/version.sh"
 
 # 新项目：LAST_VERSION 置空，首次 CI 检测到新版本即构建
-LAST_VERSION=
+LAST_VERSION=2.8.3
 OWNER="adnanh"
 REPO="webhook"
 DAYS_BEFORE=3
