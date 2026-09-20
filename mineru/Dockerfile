@@ -1,4 +1,4 @@
-ARG VERSION=mineru-3.4.0-released
+ARG VERSION=mineru-4.0.3-released
 
 # =============================================================================
 # Stage 1: Builder/Fetcher — clone source at the exact release tag
@@ -42,10 +42,11 @@ RUN apt-get update && \
 # ── Install MinerU from the version-pinned source ────────────────────────
 # Using the cloned source ensures exact parity with the Git tag,
 # including any unreleased patches between PyPI publishes.
-# Upstream uses: RUN python3 -m pip install -U 'mineru[core]>=3.4.0'
+# Upstream uses: RUN python3 -m pip install -U 'mineru[torch]>=4.0,<5' --break-system-packages
+#   (torch extra reuses the PyTorch already present in the vLLM base image)
 # We maintain git clone for version-pinned builds.
 COPY --from=builder /workspace/mineru-src /tmp/mineru-src
-RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages && \
+RUN python3 -m pip install -U '/tmp/mineru-src[torch]' --break-system-packages && \
     rm -rf /tmp/mineru-src && \
     python3 -m pip cache purge
 
@@ -53,12 +54,19 @@ RUN python3 -m pip install -U '/tmp/mineru-src[core]' --break-system-packages &&
 # Models are downloaded on first container startup, not pre-baked into image.
 # To persist models across container restarts, mount a volume at:
 #   /root/.cache/huggingface
-# Upstream pre-downloads models: RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
+# Upstream pre-downloads models:
+#   RUN /bin/bash -c "mineru-kit models download --tier standard --small-backend torch --vlm-engine vllm -s huggingface"
 # Uncomment below to pre-download during image build (increases image size):
-# RUN /bin/bash -c "mineru-models-download -s huggingface -m all"
+# RUN /bin/bash -c "mineru-kit models download --tier standard --small-backend torch --vlm-engine vllm -s huggingface"
 
 # ── Runtime configuration ────────────────────────────────────────────────
-ENV MINERU_MODEL_SOURCE=local
+# Model backend selection aligned with upstream:
+#   - MINERU_MODEL_SMALL_BACKEND=torch: torch small model (reuses base image torch)
+#   - MINERU_MODEL_VLM_ENGINE=vllm: VLM inference via the vLLM base image
+# Model downloads at startup use the same flags (see model download above).
+ENV MINERU_MODEL_SOURCE=local \
+    MINERU_MODEL_SMALL_BACKEND=torch \
+    MINERU_MODEL_VLM_ENGINE=vllm
 
 WORKDIR /app
 
