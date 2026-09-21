@@ -28,6 +28,7 @@ ARG VERSION=2.8.3
 RUN apt-get update && apt-get install -y --no-install-recommends curl jq ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir pyyaml
 COPY --from=fetcher /workspace/webhook /usr/local/bin/webhook
 
 # 非 root 运行：创建 uid 1000 webhook 用户（参考 almir/docker-webhook）
