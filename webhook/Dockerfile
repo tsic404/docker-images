@@ -37,6 +37,8 @@ COPY --from=fetcher /workspace/webhook /usr/local/bin/webhook
 RUN groupadd --gid 1000 webhook \
     && useradd --uid 1000 --gid webhook --shell /usr/sbin/nologin -d /etc/webhook --create-home webhook
 
+RUN chown -R /etc/webhook
+
 # hooks.json 与同步脚本不封装进镜像，运行时通过 volume 挂载（-v <dir>:/etc/webhook）
 WORKDIR /etc/webhook
 
