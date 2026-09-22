@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/../.functions/github.sh"
 
 # Image specific configuration
 # New project: LAST_VERSION empty → first CI run always builds
-LAST_VERSION=
+LAST_VERSION=fe5981a8bdde8afdd33c67b67ce2a89c6cddcad0
 OWNER="openchamber"
 REPO="openchamber"
 BRANCH="opencode-v2-refactoring"
