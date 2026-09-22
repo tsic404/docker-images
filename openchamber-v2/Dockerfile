@@ -1,0 +1,106 @@
+# syntax=docker/dockerfile:1
+
+# OpenChamber v2 image
+# Source: https://github.com/openchamber/openchamber (branch: opencode-v2-refactoring)
+# VERSION is the git ref (branch, tag, or commit SHA) to build; the CI workflow
+# passes the tracked branch head commit SHA, so the image pins the exact commit.
+ARG VERSION=opencode-v2-refactoring
+
+# Fetch the exact source ref
+FROM alpine/git:latest AS fetcher
+WORKDIR /workspace
+ARG VERSION
+# Shallow-fetch the requested ref. GitHub allows fetching a reachable commit
+# SHA directly, so this works for branch names, tags, and commit SHAs alike;
+# fall back to a full fetch if the shallow fetch is refused.
+RUN set -eux; \
+    git init -q openchamber; \
+    cd openchamber; \
+    git remote add origin https://github.com/openchamber/openchamber.git; \
+    if ! git fetch -q --depth=1 origin "${VERSION}"; then \
+        git fetch -q origin "${VERSION}"; \
+    fi; \
+    git checkout -q FETCH_HEAD
+
+FROM oven/bun:1.4.2 AS base
+WORKDIR /app
+
+FROM base AS deps
+WORKDIR /app
+COPY --from=fetcher /workspace/openchamber/package.json ./
+COPY --from=fetcher /workspace/openchamber/bun.lock ./
+COPY --from=fetcher /workspace/openchamber/bun-patches ./bun-patches
+COPY --from=fetcher /workspace/openchamber/packages/ui/package.json ./packages/ui/
+COPY --from=fetcher /workspace/openchamber/packages/web/package.json ./packages/web/
+COPY --from=fetcher /workspace/openchamber/packages/electron/package.json ./packages/electron/
+COPY --from=fetcher /workspace/openchamber/packages/vscode/package.json ./packages/vscode/
+COPY --from=fetcher /workspace/openchamber/packages/mobile/package.json ./packages/mobile/
+COPY --from=fetcher /workspace/openchamber/packages/sdk/package.json ./packages/sdk/
+RUN bun install --frozen-lockfile --ignore-scripts
+
+FROM deps AS builder
+WORKDIR /app
+COPY --from=fetcher /workspace/openchamber/ ./
+# Mirror the upstream .dockerignore: the tracked .env sets NODE_ENV=development
+# and must not leak into the production web build.
+RUN rm -f .env .env.*
+# The server imports @openchamber/sdk at runtime, and deps installed with
+# --ignore-scripts, so the root postinstall never built it. Build it here
+# so the runtime stage can copy the output.
+RUN bun run --cwd packages/sdk build
+RUN bun run build:web
+
+FROM oven/bun:1.4.2 AS runtime
+WORKDIR /home/openchamber
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  bash \
+  ca-certificates \
+  git \
+  less \
+  nodejs \
+  npm \
+  openssh-client \
+  python3 \
+  && rm -rf /var/lib/apt/lists/*
+
+# Replace the base image's 'bun' user (UID 1000) with 'openchamber'
+# so mounted volumes with 1000:1000 ownership work correctly.
+RUN userdel bun \
+  && groupadd -g 1000 openchamber \
+  && useradd -u 1000 -g 1000 -m -s /bin/bash openchamber \
+  && chown -R openchamber:openchamber /home/openchamber
+
+# Switch to openchamber user
+USER openchamber
+
+ENV NPM_CONFIG_PREFIX=/home/openchamber/.npm-global
+ENV PATH=${NPM_CONFIG_PREFIX}/bin:${PATH}
+
+RUN npm config set prefix /home/openchamber/.npm-global && mkdir -p /home/openchamber/.npm-global && \
+  mkdir -p /home/openchamber/.local /home/openchamber/.config /home/openchamber/.ssh && \
+  npm install -g @opencode/cli@2.0.14
+
+# cloudflared 2026.3.0 - update digest explicitly when upgrading
+COPY --from=cloudflare/cloudflared@sha256:6d91c121b803126f7a5344005d17a9324788fc09d305b6e2560ec6040a7ae283 /usr/local/bin/cloudflared /usr/local/bin/cloudflared
+
+ENV NODE_ENV=production
+# The base image ships with the POSIX locale, which makes bash readline treat
+# every byte of a multibyte character separately in the built-in terminal.
+ENV LANG=C.UTF-8
+
+COPY --from=builder /app/scripts/docker-entrypoint.sh /home/openchamber/openchamber-entrypoint.sh
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/web/node_modules ./packages/web/node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/packages/web/package.json ./packages/web/package.json
+COPY --from=builder /app/packages/sdk/package.json ./packages/sdk/package.json
+COPY --from=builder /app/packages/sdk/dist ./packages/sdk/dist
+COPY --from=builder /app/packages/web/bin ./packages/web/bin
+COPY --from=builder /app/packages/web/server ./packages/web/server
+COPY --from=builder /app/packages/web/dist ./packages/web/dist
+
+EXPOSE 3000
+
+ENTRYPOINT ["sh", "/home/openchamber/openchamber-entrypoint.sh"]
