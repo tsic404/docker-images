@@ -25,7 +25,7 @@ ENV GOPROXY=https://goproxy.cn,direct \
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY main.go broker.go passwd.go run.go mediasrv_stub.go gateway_stub.go proxy.go ./
+COPY main.go broker.go passwd.go run.go ./
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
         go build -trimpath -ldflags="-s -w" -o /out/trimmedia . \
  && /out/trimmedia mkpasswd --secret t --password 123456 | grep -q '^\$argon2id\$v=19\$m=65536,t=3,p=1\$'
@@ -59,6 +59,8 @@ RUN python /src/patch-ui.py /app/payload/static/assets
 FROM --platform=$BUILDPLATFORM python:3.12-slim AS trimfs
 ARG TARGETARCH
 # 可选：指定系统文件来源（本地 ISO / ARM 设备镜像的路径或 URL）。
+# 注意：留空自动发现时走官方镜像站的**明文 HTTP**，且上游未提供校验和；
+#       对完整性有要求请显式传本地/自建镜像。
 # 留空即自动发现官方最新版；内网镜像或离线构建时可以覆盖。
 ARG TRIMFS_ISO=""
 ARG TRIMFS_ARM_IMG=""

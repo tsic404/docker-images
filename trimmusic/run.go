@@ -44,8 +44,8 @@ func cmdRun(args []string) error {
 	// 音乐目录必须是飞牛用户路径格式，否则应用判定只读并反复要求"授权文件夹"
 	for _, d := range strings.Split(*musicDir, ":") {
 		if d = strings.TrimSpace(d); d != "" {
-			os.MkdirAll(d, 0o777)
-			os.Chmod(d, 0o777)
+			os.MkdirAll(d, 0o755)
+			os.Chmod(d, 0o755)
 		}
 	}
 

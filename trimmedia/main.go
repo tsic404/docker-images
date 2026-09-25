@@ -21,9 +21,6 @@ func usage() {
   run       入口（镜像 ENTRYPOINT）
   broker    假 rpcbroker + 应用中心 auth-path 桩
   mkpasswd  生成 argon2id PHC 串
-  proxy     把应用 unix socket 暴露成 TCP（并补 X-Real-IP）
-  mediasrv-stub  mediasrv 桩（音乐只用 media.version）
-  gateway-stub   open-gateway API-scope 桩（音乐用它要可扫描目录）
 
 环境变量：TRIM_ROOT / TRIM_PKGMETA / MEDIA_DIRS / TRIM_SERVICE_PORT /
           ADMIN_USER / ADMIN_PASSWORD / LOG_LEVEL / GPU_ENABLE
@@ -43,12 +40,6 @@ func main() {
 		err = cmdBroker(os.Args[2:])
 	case "mkpasswd":
 		err = cmdMkpasswd(os.Args[2:])
-	case "proxy":
-		err = cmdProxy(os.Args[2:])
-	case "mediasrv-stub":
-		err = cmdMediaSrvStub(os.Args[2:])
-	case "gateway-stub":
-		err = cmdGatewayStub(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return

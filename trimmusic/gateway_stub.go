@@ -35,7 +35,7 @@ func startGatewayStub(folders []string, logPath string) error {
 	if err != nil {
 		return err
 	}
-	os.Chmod(gatewaySock, 0o666)
+	os.Chmod(gatewaySock, 0o600)
 	logf("open-gateway 桩 listening on %s（目录：%v）", gatewaySock, folders)
 
 	paths := make([]string, 0, len(folders))

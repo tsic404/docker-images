@@ -97,6 +97,9 @@ def main():
     else:
         src = to_mirror(opts.img) if opts.img else to_mirror(discover(opts.device))
         print("[arm] 镜像：%s" % src)
+        if src.startswith("http://"):
+            print("[warn] 系统文件经明文 HTTP 从镜像站获取，且上游未提供校验和；"
+                  "对完整性有要求时请用本地镜像（--iso / --img）", flush=True)
         opener = lambda: http_open(src)
 
     # 用前 32MB 解出分区表（GPT 头 + 分区项都在最前面）

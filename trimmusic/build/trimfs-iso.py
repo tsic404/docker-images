@@ -169,6 +169,9 @@ def main():
         src = resolve_latest_iso()
         print("[iso] 自动发现最新 ISO：%s" % src, flush=True)
     off, size = locate(src)
+    if src.startswith("http://"):
+        print("[warn] 系统文件经明文 HTTP 从镜像站获取，且上游未提供校验和；"
+              "对完整性有要求时请用本地镜像（--iso / --img）", flush=True)
     print("[iso] TRIMFS.TGZ @ %d (%d 字节) <- %s" % (off, size, src), flush=True)
 
     if is_url(src):

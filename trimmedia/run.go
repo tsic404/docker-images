@@ -82,14 +82,20 @@ func cmdRun(args []string) error {
 	if err := media.Start(); err != nil {
 		return fmt.Errorf("mediasrv 启动失败：%w", err)
 	}
+	// ProcessState 要等 Wait 返回后才非 nil，所以这里必须用 Wait 的返回值判活，
+	// 否则 mediasrv 启动即崩溃时不会立刻报错，而是白等 60 秒。
+	mediaDone := make(chan error, 1)
+	go func() { mediaDone <- media.Wait() }()
 	ready := false
 	for i := 0; i < 120; i++ {
 		if _, err := os.Stat("/var/run/mediasrv.socket"); err == nil {
 			ready = true
 			break
 		}
-		if media.ProcessState != nil && media.ProcessState.Exited() {
-			return fmt.Errorf("mediasrv 退出")
+		select {
+		case err := <-mediaDone:
+			return fmt.Errorf("mediasrv 提前退出：%w", err)
+		default:
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -128,7 +134,7 @@ func cmdRun(args []string) error {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	done := make(chan error, 2)
-	go func() { done <- media.Wait() }()
+	go func() { done <- <-mediaDone }()
 	go func() { done <- app.Wait() }()
 	var runErr error
 	select {

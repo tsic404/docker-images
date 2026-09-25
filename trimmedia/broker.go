@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -57,6 +58,12 @@ func dbg(format string, args ...any) {
 		logf(format, args...)
 	}
 }
+
+// redact 把调试转储里的 token 抹掉：响应帧里 services[].token 就是 TRIM_API_TOKEN，
+// 排障时打开 DEBUG 不该把它落到日志里。
+var tokenRe = regexp.MustCompile(`("token"\s*:\s*")[^"]*(")`)
+
+func redact(s string) string { return tokenRe.ReplaceAllString(s, "${1}***${2}") }
 
 func openLog(path string) {
 	if path == "" {
@@ -222,9 +229,10 @@ func process(req map[string]any) map[string]any {
 // rpcbroker 与应用中心 socket 用的是同一套帧格式，只有方法集不同。
 func serveTRPC(conn net.Conn, r io.Reader, process func(map[string]any) map[string]any) {
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(300 * time.Second))
 	dbg("client connected: %s", conn.RemoteAddr())
 	for {
+		// 每轮续期：一次性绝对期限会把应用复用的长连接在 5 分钟后静默掐断
+		conn.SetReadDeadline(time.Now().Add(300 * time.Second))
 		header := make([]byte, headerSize)
 		if _, err := io.ReadFull(r, header); err != nil {
 			return
@@ -252,10 +260,10 @@ func serveTRPC(conn net.Conn, r io.Reader, process func(map[string]any) map[stri
 		if d, ok := outer["data"].(map[string]any); ok {
 			req = d
 		}
-		dbg("request: %s", payload)
+		dbg("request: %s", redact(string(payload)))
 		inner, _ := json.Marshal(process(req))
 		resp, _ := json.Marshal(map[string]any{"data": json.RawMessage(inner)})
-		dbg("response: %s", resp)
+		dbg("response: %s", redact(string(resp)))
 		binary.LittleEndian.PutUint16(header[payloadLenPos:], uint16(len(resp)))
 		if _, err := conn.Write(append(header, resp...)); err != nil {
 			logf("write resp error: %v", err)
@@ -356,7 +364,7 @@ func listenUnix(path string, serve func(net.Listener)) error {
 	if err != nil {
 		return err
 	}
-	os.Chmod(path, 0o666)
+	os.Chmod(path, 0o600)
 	logf("listening on %s", path)
 	serve(ln)
 	return nil
