@@ -189,9 +189,13 @@ EXPOSE 8005
 #   --device /dev/dma_heap        DMA-BUF 分配（部分内核必需）
 # arm64 的 soname 与文件名不一致（librockchip_mpp.so.0 的 SONAME 是 .so.1、
 # librga.so.2.1.0 的 SONAME 是 .so.2），已由上面的 ldconfig 补好软链；
-# 构建期自检也会对 dri/ 与 libvulkan_*.so 逐个 ldd，缺库直接构建失败。
-# ⚠ arm64 路径**尚未实际构建验证**（只做过静态检查：脚本取 /usr/trim 全量，
-#   MPP/RGA 库与 arm64 版 mediasrv/ffmpeg 都在其中；自检覆盖依赖完整性）。
+# 构建期自检会对 dri/ 与 libvulkan_*.so 逐个 ldd，缺库直接构建失败。
+# 注意 arm64 的 /usr/trim 里**没有** dri/（RK3588 走 rkmpp 而非 VAAPI），
+# 循环对缺失目录是容忍的，不会因此报错。
+# arm64 说明：已用官方 rock-5b 镜像（1.2.0302）解包核对过 /usr/trim 实际内容 ——
+#   bin/mediasrv、lib/mediasrv/{ffmpeg,ffprobe} 均在（提取脚本已保证其非空且 755），
+#   lib/mediasrv/lib/ 下有 librockchip_mpp.so.0 与 librga.so.2.1.0，无 dri/ 与 vainfo。
+#   整条 arm64 构建尚未跑通（本地只验证了提取环节），首次 CI 构建仍建议留意。
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
     CMD curl -fsS -o /dev/null "http://127.0.0.1:${TRIM_SERVICE_PORT:-8005}/" || exit 1
