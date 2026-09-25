@@ -157,8 +157,14 @@ def main():
     # （恢复物只落在构建阶段的临时目录里，不会进最终镜像）
     stage = tempfile.mkdtemp(prefix="trimfs-arm-")
     try:
-        subprocess.run([tool, "restore", "-i", tmp.name, stage],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # -m 会恢复 owner/mode/times，但 chown 需要 root；构建阶段是 root，
+        # 非 root 本地调试时退回只恢复内容，权限由后面的 chmod 兜底。
+        args = [tool, "restore", "-i"]
+        if os.geteuid() == 0:
+            args.append("-m")
+        args += [tmp.name, stage]
+        subprocess.run(args, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         src_dir = os.path.join(stage, "usr", "trim")
         if not os.path.isdir(src_dir):
             raise SystemExit("btrfs restore 没能取出 /usr/trim")
@@ -170,10 +176,17 @@ def main():
         if not opts.keep_ext4:
             os.remove(tmp.name)
 
-    bin_path = os.path.join(opts.out, "usr/trim/bin/mediasrv")
-    if not os.path.isfile(bin_path):
-        raise SystemExit("结果里没有 mediasrv：%s" % bin_path)
-    os.chmod(bin_path, 0o755)
+    # btrfs restore 写入失败（如磁盘配额不足）时只打 ERROR 但仍返回 0，
+    # 结果是文件存在却为空，必须在构建期就发现，否则要到运行时自检才炸。
+    # mediasrv 会自己调用 ffmpeg/ffprobe，三个都必须是可执行的
+    for rel in ("bin/mediasrv", "lib/mediasrv/ffmpeg", "lib/mediasrv/ffprobe"):
+        f = os.path.join(opts.out, "usr/trim", rel)
+        if not os.path.isfile(f):
+            raise SystemExit("结果里缺少 %s（系统文件不完整）" % rel)
+        if os.path.getsize(f) == 0:
+            raise SystemExit("结果里 %s 为空（多半是暂存目录磁盘空间不足，"
+                             "可用 TMPDIR 指向大分区）" % rel)
+        os.chmod(f, 0o755)
     print("[arm] 完成：%s" % opts.out)
 
 
