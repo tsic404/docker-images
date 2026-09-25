@@ -156,16 +156,17 @@ RUN printf '%s\n' /usr/trim/lib /usr/trim/lib/mediasrv/lib > /etc/ld.so.conf.d/f
  && ldconfig
 
 # 自检：mediasrv / ffmpeg / 硬件加速驱动依赖必须齐全 + 口令哈希可用，否则构建失败
+# 逐项检查而不是串起来，缺什么直接打出来（arm64 的 /usr/trim 内容与 x86 不同）
 RUN set -eux; \
     for b in /usr/trim/bin/mediasrv /usr/trim/lib/mediasrv/ffmpeg; do \
+        if [ ! -e "$b" ]; then echo "缺少文件: $b"; ls -la "$(dirname "$b")" || true; exit 1; fi; \
+        if [ ! -x "$b" ]; then echo "不可执行: $b"; ls -la "$b"; exit 1; fi; \
         ldd "$b" | grep -q 'not found' && { echo "缺失依赖: $b"; ldd "$b" | grep 'not found'; exit 1; } || true; \
     done; \
     for d in /usr/trim/lib/mediasrv/lib/dri/*.so /usr/trim/lib/mediasrv/lib/libvulkan_*.so; do \
         [ -e "$d" ] || continue; \
         ldd "$d" | grep -q 'not found' && { echo "缺失依赖: $d"; ldd "$d" | grep 'not found'; exit 1; } || true; \
     done; \
-    test -x /usr/trim/bin/mediasrv; \
-    test -x /usr/trim/lib/mediasrv/ffmpeg; \
     /usr/trim/trimmusic mkpasswd --password 123456 | grep -q '^\$2a\$12\$'; \
     echo "自检通过"
 
