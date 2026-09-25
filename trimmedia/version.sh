@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../.functions/utils.sh"
 
-LAST_VERSION=0.9.8-1
+LAST_VERSION=0
 APP_NAME="trim.media"
 API="https://aps.fnnas.com/api/v1"
 OS_VERSION="${TRIM_OS_VERSION:-1.2.0701}"

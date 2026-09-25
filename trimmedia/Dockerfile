@@ -85,6 +85,13 @@ FROM debian:12-slim
 
 ARG VERSION
 ARG TARGETARCH
+# arm64 的 libmali 变体必须与内核 mali.ko 匹配，选错 OpenCL 会静默失效：
+#   Armbian current / Ubuntu-Rockchip 6.1 LTS -> g24p0（当前默认）
+#   Armbian vendor 内核（6.1.x-vendor-rk35xx）/ 厂商 BSP -> g13p0
+# 注意 g13p0 在 v1.9-1-20260312-bd33ee2 之后的上游 release 里已被移除，
+# 若要用 g13p0 得固定到那个 tag 并同步改 SHA256。
+ARG LIBMAli_DEB_URL=https://github.com/tsukumijima/libmali-rockchip/releases/download/v1.9-1-20260923-ec78b74/libmali-valhall-g610-g24p0-gbm_1.9-1_arm64.deb
+ARG LIBMAli_DEB_SHA256=1432646b23750cedea0f19a276e6d19d6e620805bf5564b41efa575468cab0c4
 LABEL org.opencontainers.image.title="fnOS trim.media (飞牛影视)" \
       org.opencontainers.image.description="飞牛影视独立部署镜像：应用本体取自飞牛应用中心，飞牛 RPC 依赖由 Go 桩程序模拟" \
       org.opencontainers.image.version="${VERSION}" \
@@ -122,6 +129,18 @@ RUN sed -i 's/^Components: main$/Components: main contrib non-free non-free-firm
  && if [ "${TARGETARCH}" = "amd64" ]; then \
         apt-get install -y --no-install-recommends \
           intel-opencl-icd clinfo intel-media-va-driver i965-va-driver; \
+    fi \
+ && if [ "${TARGETARCH}" = "arm64" ]; then \
+        # RK3588 的 OpenCL 由 ARM libmali 提供，Debian 仓库里没有这个包。\
+        # 变体须与内核 mali.ko 匹配：Armbian current / Ubuntu-Rockchip 6.1 LTS 用\
+        # g24p0（默认），vendor 内核 / 厂商 BSP 用 g13p0，改上面的 ARG 即可。\
+        # 依赖 libc6/libdrm2/libgcc-s1/libstdc++6 上面已装好；包里的固件在容器里不生效\
+        # （固件由宿主机内核加载），留着无害。\
+        apt-get install -y --no-install-recommends curl \
+        && curl -fsSL -o /tmp/libmali.deb "${LIBMAli_DEB_URL}" \
+        && echo "${LIBMAli_DEB_SHA256}  /tmp/libmali.deb" | sha256sum -c - \
+        && dpkg -i /tmp/libmali.deb \
+        && rm -f /tmp/libmali.deb; \
     fi \
  && rm -rf /var/lib/apt/lists/*
 
@@ -196,6 +215,17 @@ EXPOSE 8005
 #   bin/mediasrv、lib/mediasrv/{ffmpeg,ffprobe} 均在（提取脚本已保证其非空且 755），
 #   lib/mediasrv/lib/ 下有 librockchip_mpp.so.0 与 librga.so.2.1.0，无 dri/ 与 vainfo。
 #   整条 arm64 构建尚未跑通（本地只验证了提取环节），首次 CI 构建仍建议留意。
+
+# arm64 的 OpenCL 说明（RK3588）：
+#   RK3588 的 OpenCL 由 ARM libmali 提供，Debian 仓库里没有这个包，本镜像在
+#   arm64 分支构建时用官方 release 的 .deb 装上（带 SHA256 校验，见 runtime 阶段的
+#   LIBMAli_DEB_URL/SHA256）。变体必须与内核里的 mali.ko 匹配：
+#     Armbian current / Ubuntu-Rockchip 6.1 LTS        -> g24p0（当前默认）
+#     Armbian vendor 内核（6.1.x-vendor-rk35xx）/ 厂商 BSP -> g13p0
+#   不匹配时 ffmpeg 会报 "Failed to get number of OpenCL platforms: -1001"，
+#   只影响 HDR tonemap，不影响 rkmpp 解码。
+#   包里的 /lib/firmware/mali_csffw.bin 在容器里不生效（固件由宿主机内核加载）。
+#   若节点内核需要另一个变体又不想重构建，可从宿主机覆盖挂载（见 StatefulSet 注释）。
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
     CMD curl -fsS -o /dev/null "http://127.0.0.1:${TRIM_SERVICE_PORT:-8005}/" || exit 1

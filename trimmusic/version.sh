@@ -10,7 +10,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../.functions/utils.sh"
 
-LAST_VERSION=1.0.10
+LAST_VERSION=0
 APP_ID=333
 APP_NAME="trim.music"
 API="https://aps.fnnas.com/api/v1"
