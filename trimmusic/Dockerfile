@@ -149,22 +149,35 @@ COPY --from=app /app/payload/ /usr/local/apps/@appcenter/trim.music/
 COPY --from=app /app/pkg/manifest /app/pkg/ICON.PNG /var/apps/trim.music/
 COPY --from=app /app/pkg/config /app/pkg/cmd /app/pkg/wizard /var/apps/trim.music/
 
-# 去掉登录页的「使用 NAS 登录」按钮：独立部署没有 NAS 可登，留着只会点出错误。
-# 按钮由组件属性 showNasLogin 控制（默认 !0），把默认值改成 !1 即可；
-# 用标识符通配，避免压缩后变量名变化导致补丁失效。
-# 断言必须检查「确实替换过」——只断言无残留的话，一旦上游改了写法，sed 一次都不匹配
-# 却依然构建成功，补丁静默失效。
+# 去掉两个依赖 NAS 接口的按钮（独立部署没有这些接口，留着只会点出错误）：
+#   1) 登录页的「使用 NAS 登录」——由组件属性 showNasLogin 控制（默认 !0）
+#   2) 文件选择器的「授权文件夹」——弹窗的 extraFooter 属性，条件为真才渲染
+# 两处都用标识符通配，避免压缩后变量名变化导致补丁失效；
+# 断言检查「确实替换过」——只断言无残留的话，上游改写法时 sed 一次都不匹配
+# 却依然构建成功，补丁会静默失效。
+# 注意 extraFooter 有 4 处，只有带 ? 的那一处是三元条件（授权按钮），
+# 另外三处是普通属性赋值（extraFooter:S,...），所以正则必须带 \?。
 RUN set -eux; \
+    assets=/usr/local/apps/@appcenter/trim.music/static/assets; \
     hit=0; \
-    for f in /usr/local/apps/@appcenter/trim.music/static/assets/*.js; do \
+    for f in $assets/*.js; do \
         if grep -qE 'showNasLogin:[A-Za-z_$][A-Za-z0-9_$]*=!0' "$f"; then \
             sed -i -E 's/(showNasLogin:)([A-Za-z_$][A-Za-z0-9_$]*)=!0/\1\2=!1/g' "$f"; \
             hit=$((hit+1)); \
         fi; \
     done; \
     [ "$hit" -ge 1 ]; \
-    ! grep -rlE 'showNasLogin:[A-Za-z_$][A-Za-z0-9_$]*=!0' /usr/local/apps/@appcenter/trim.music/static/assets/; \
-    echo "已移除登录页的 NAS 登录按钮（$hit 个文件）"
+    ! grep -rlE 'showNasLogin:[A-Za-z_$][A-Za-z0-9_$]*=!0' $assets/; \
+    hit2=0; \
+    for f in $assets/*.js; do \
+        if grep -qE 'extraFooter:[A-Za-z_$][A-Za-z0-9_$]*\?' "$f"; then \
+            sed -i -E 's/extraFooter:[A-Za-z_$][A-Za-z0-9_$]*\?/extraFooter:!1?/' "$f"; \
+            hit2=$((hit2+1)); \
+        fi; \
+    done; \
+    [ "$hit2" -ge 1 ]; \
+    ! grep -rlE 'extraFooter:[A-Za-z_$][A-Za-z0-9_$]*\?' $assets/; \
+    echo "已移除 NAS 登录按钮（$hit 个文件）与授权文件夹按钮（$hit2 个文件）"
 
 COPY --from=gobuild /out/trimmusic /usr/trim/trimmusic
 COPY seed-admin.sh /usr/trim/seed-admin.sh
