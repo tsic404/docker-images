@@ -59,8 +59,10 @@ else
     log "用户 $USER 已存在（口令保持不变；要重置设 SEED_RESET_PASSWORD=1）"
 fi
 
-# 2) app_state：应用据此判断已初始化
-printf "insert or replace into app_state(id,k,v,created_at,updated_at) values
+# 2) app_state：应用据此判断已初始化。
+# 用 insert or ignore —— 已存在的键不覆盖，否则每次重启都会把 server_guid 换成新值、
+# 并把用户在 UI 里改过的 server_name/server_lang 改回默认。
+printf "insert or ignore into app_state(id,k,v,created_at,updated_at) values
  (1,'initialized','true',datetime('now'),datetime('now')),
  (2,'server_guid','%s',datetime('now'),datetime('now')),
  (3,'server_name','fnos',datetime('now'),datetime('now')),

@@ -44,7 +44,7 @@ q() { sqlite3 "$DB" "$1"; }
 # 1) sys_secret：口令哈希的盐值前缀（飞牛系统写的，独立部署需自备一个稳定值）
 if [ -z "$(q "select value from sys_metadata where key='sys_secret'")" ]; then
     SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
-    q "insert or replace into sys_metadata(key,value,private) values('sys_secret','$SECRET',1)"
+    q "insert or ignore into sys_metadata(key,value,private) values('sys_secret','$SECRET',1)"
     log "生成 sys_secret"
 fi
 SECRET=$(q "select value from sys_metadata where key='sys_secret'")
