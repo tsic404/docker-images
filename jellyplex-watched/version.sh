@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../.functions/utils.sh"
 
 # 新项目：LAST_VERSION 置空，首次 CI 检测到版本即构建（构建成功后由 CI 写回）
-LAST_VERSION=main-36d017464c59bfacf525dbf654a6f2a9938c8a5e
+LAST_VERSION=main-f91b0c2f2990395324945dc313d92eb23c7870d1
 OWNER="tsic404"
 REPO="JellyPlex-Watched"
 BRANCH="main"
